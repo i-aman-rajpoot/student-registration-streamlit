@@ -97,6 +97,21 @@ st.markdown(
         box-shadow: 0 12px 28px rgba(5, 18, 35, 0.3);
     }
 
+    .profile-image-link {
+        display: block;
+        width: 98px;
+        margin: 0 auto;
+    }
+
+    .profile-image-link img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 2px solid rgba(255, 255, 255, 0.55);
+        border-radius: 18px;
+        box-shadow: 0 12px 28px rgba(5, 18, 35, 0.3);
+    }
+
     button[data-testid="stSidebarCollapseButton"],
     [data-testid="stSidebarCollapseButton"] button,
     button[data-testid="stSidebarCollapsedControl"],
@@ -166,17 +181,37 @@ st.markdown(
     }
 
     .youtube-more-link {
-        display: block;
-        margin-top: 8px;
-        color: #f8fafc !important;
-        text-align: center;
+        display: flex;
+        width: fit-content;
+        align-items: center;
+        justify-content: center;
+        margin: 10px auto 0;
+        padding: 8px 18px;
+        border: 1px solid transparent;
+        border-radius: 9999px;
+        background:
+            linear-gradient(120deg, #B00000, #FF0000 58%, #D60000) padding-box,
+            linear-gradient(120deg, #7F0000, #FF0000 52%, #FF6B6B) border-box;
+        box-shadow: 0 4px 12px rgba(5, 18, 35, 0.2);
         font-weight: 600;
-        text-decoration: none;
+        text-decoration: none !important;
+        transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+    }
+
+    .youtube-more-link span {
+        color: #ffffff;
     }
 
     .youtube-more-link:hover {
-        color: #bae6fd !important;
-        text-decoration: underline;
+        text-decoration: none !important;
+        box-shadow: 0 8px 18px rgba(5, 18, 35, 0.3);
+        filter: brightness(1.15) saturate(1.1);
+        transform: translateY(-3px) scale(1.03);
+    }
+
+    .youtube-more-link:focus-visible {
+        outline: 3px solid #FF4D4D;
+        outline-offset: 3px;
     }
 
     div[data-testid="stTextInput"] [data-baseweb="input"] > div,
@@ -340,6 +375,60 @@ st.markdown(
         opacity: 0.78;
     }
 
+    .technology-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+        margin: 12px 0 20px;
+    }
+
+    .technology-card {
+        display: flex;
+        min-height: 142px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 16px 12px;
+        color: var(--text-color, #262730) !important;
+        text-align: center;
+        text-decoration: none !important;
+        background: var(--secondary-background-color, #ffffff);
+        border: 1px solid color-mix(in srgb, var(--text-color, #262730) 12%, transparent);
+        border-radius: 14px;
+        box-shadow: 0 5px 16px rgba(15, 23, 42, 0.1);
+        transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    }
+
+    .technology-card:hover {
+        color: var(--text-color, #262730) !important;
+        border-color: #2563EB;
+        box-shadow: 0 9px 22px rgba(15, 23, 42, 0.18);
+        transform: translateY(-3px);
+    }
+
+    .technology-card:focus-visible {
+        outline: 3px solid #2563EB;
+        outline-offset: 3px;
+    }
+
+    .technology-card img {
+        width: 42px;
+        height: 42px;
+        object-fit: contain;
+    }
+
+    .technology-card strong {
+        font-size: 0.98rem;
+        line-height: 1.2;
+    }
+
+    .technology-card span {
+        font-size: 0.82rem;
+        line-height: 1.35;
+        opacity: 0.78;
+    }
+
     div[data-testid="stExpander"],
     div[data-testid="stForm"] {
         color: var(--text-color, #262730);
@@ -446,12 +535,12 @@ social_profiles = [
         "image/png",
     ),
 ]
-social_icon_dir = Path(__file__).parent / "images"
+image_dir = Path(__file__).parent / "images"
 
 
 @st.cache_data(show_spinner=False)
-def load_social_icon_data(icon_name, media_type):
-    icon_bytes = (social_icon_dir / icon_name).read_bytes()
+def load_image_data(image_name, media_type):
+    icon_bytes = (image_dir / image_name).read_bytes()
     encoded_icon = base64.b64encode(icon_bytes).decode("ascii")
     return f"data:{media_type};base64,{encoded_icon}"
 
@@ -460,16 +549,56 @@ social_links_html = '<div class="social-links">' + "".join(
     (
         f'<a href="{url}" aria-label="{label}" title="{label}" '
         'target="_blank" rel="noopener noreferrer">'
-        f'<img src="{load_social_icon_data(icon_name, media_type)}" '
+        f'<img src="{load_image_data(icon_name, media_type)}" '
         'alt=""></a>'
     )
     for label, url, icon_name, media_type in social_profiles
 ) + "</div>"
 
+technology_stack = [
+    ("Streamlit", "Web app and dataframes", "https://streamlit.io/", "tech-streamlit.svg"),
+    ("Supabase", "Hosted database platform", "https://supabase.com/", "tech-supabase.svg"),
+    ("PostgreSQL", "Relational database", "https://www.postgresql.org/", "tech-postgresql.svg"),
+    ("Gemini AI", "Natural language to SQL", "https://ai.google.dev/gemini-api/docs", "tech-gemini.svg"),
+    (
+        "GitHub",
+        "Project source code",
+        "https://github.com/i-aman-rajpoot/student-registration-streamlit",
+        "tech-github.svg",
+    ),
+    (
+        "Streamlit Community Cloud",
+        "Application hosting",
+        "https://streamlit.io/cloud",
+        "tech-streamlit.svg",
+    ),
+]
+technology_cards_html = '<div class="technology-grid">' + "".join(
+    (
+        f'<a class="technology-card" href="{url}" target="_blank" '
+        f'rel="noopener noreferrer" aria-label="{name}: {description}">'
+        f'<img src="{load_image_data(icon_name, "image/svg+xml")}" alt="{name} logo">'
+        f"<strong>{name}</strong><span>{description}</span></a>"
+    )
+    for name, description, url, icon_name in technology_stack
+) + "</div>"
+
 with st.sidebar:
-    _, profile_col, _ = st.columns([1, 2, 1])
-    with profile_col:
-        st.image(str(Path(__file__).parent / "images" / "PROFILE.jpeg"), width=140)
+    profile_image = base64.b64encode(
+        (Path(__file__).parent / "images" / "PROFILE.jpeg").read_bytes()
+    ).decode("ascii")
+    st.markdown(
+        f"""
+        <a class="profile-image-link"
+           href="https://www.linkedin.com/in/i-aman-rajpoot/?isSelfProfile=true"
+           target="_blank" rel="noopener noreferrer"
+           aria-label="Visit Aman Rajpoot's LinkedIn profile">
+            <img src="data:image/jpeg;base64,{profile_image}"
+                 alt="Aman Rajpoot — LinkedIn profile">
+        </a>
+        """,
+        unsafe_allow_html=True,
+    )
     st.subheader("Aman Rajpoot")
     st.write(
         "I'm a data professional with 9+ years of overall professional experience, "
@@ -490,11 +619,11 @@ with st.sidebar:
            aria-label="Visit Aman Rajpoot's YouTube channel">
             <img src="data:image/png;base64,{youtube_promo}"
                  alt="Visit Aman Rajpoot's YouTube channel"
-                style="display:block;width:70%;height:auto;margin:16px auto 0;border-radius:14px;">
+                style="display:block;width:63%;height:auto;margin:16px auto 0;border-radius:14px;">
         </a>
         <a class="youtube-more-link"
            href="https://www.youtube.com/@i.aman.rajpoot"
-           target="_blank" rel="noopener noreferrer">More on YouTube</a>
+           target="_blank" rel="noopener noreferrer"><span>More on YouTube</span></a>
         """,
         unsafe_allow_html=True,
     )
@@ -524,8 +653,13 @@ with st.container(key="project-video-section"):
     )
 
 with st.container(key="about-project-section"):
-    with st.expander("📘 Project overview, learning objectives & architecture", expanded=True):
-        st.markdown("### Why I chose to build this project")
+    st.markdown("### 📘 Project overview, learning objectives & architecture")
+
+    st.markdown(
+        '<span id="why-i-chose-to-build-this-project"></span>',
+        unsafe_allow_html=True,
+    )
+    with st.expander("Why I chose to build this project", expanded=True):
         st.write(
             "I built this project to make the journey from a form submission to a useful, "
             "verifiable answer easy to understand. It combines Streamlit, Supabase "
@@ -544,7 +678,8 @@ with st.container(key="about-project-section"):
             "Users can compare query results with the source records to validate the answer."
         )
 
-        st.markdown("### Table of contents")
+    st.markdown('<span id="table-of-contents"></span>', unsafe_allow_html=True)
+    with st.expander("Table of contents", expanded=True):
         st.markdown(
             """
             <nav class="toc-list" aria-label="Table of contents">
@@ -569,20 +704,12 @@ with st.container(key="about-project-section"):
             unsafe_allow_html=True,
         )
 
-        st.markdown("### Technology stack")
-        st.markdown(
-            "- [**Streamlit**](https://streamlit.io/): user interface and dataframes\n"
-            "- [**Supabase**](https://supabase.com/) / "
-            "[**PostgreSQL**](https://www.postgresql.org/): persistent database\n"
-            "- [**Gemini AI**](https://ai.google.dev/gemini-api/docs): "
-            "natural-language-to-SQL assistance\n"
-            "- [**GitHub**](https://github.com/i-aman-rajpoot/student-registration-streamlit): "
-            "source-code repository\n"
-            "- [**Streamlit Community Cloud**](https://streamlit.io/cloud): "
-            "application hosting"
-        )
+    st.markdown('<span id="technology-stack"></span>', unsafe_allow_html=True)
+    with st.expander("Technology stack", expanded=True):
+        st.markdown(technology_cards_html, unsafe_allow_html=True)
 
-        st.markdown("### Workflow")
+    st.markdown('<span id="workflow"></span>', unsafe_allow_html=True)
+    with st.expander("Workflow", expanded=True):
         st.code(
             "Registration form → Supabase/PostgreSQL → Source records dataframe\n"
             "Business question → Gemini AI → Review SQL → Run query → Results dataframe\n"
