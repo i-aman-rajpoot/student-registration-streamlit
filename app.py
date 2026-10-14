@@ -87,6 +87,10 @@ st.markdown(
         color: #f8fafc;
     }
 
+    section[data-testid="stSidebar"] h3 {
+        text-align: center;
+    }
+
     section[data-testid="stSidebar"] [data-testid="stImage"] img {
         border: 2px solid rgba(255, 255, 255, 0.55);
         border-radius: 18px;
@@ -127,14 +131,14 @@ st.markdown(
         flex-wrap: wrap;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        margin: 12px 0;
+        gap: 10px;
+        margin: 10px 0;
     }
 
     .social-links a {
         display: inline-flex;
-        width: 42px;
-        height: 42px;
+        width: 34px;
+        height: 34px;
         align-items: center;
         justify-content: center;
         background: #ffffff;
@@ -156,9 +160,23 @@ st.markdown(
 
     .social-links img {
         display: block;
-        width: 23px;
-        height: 23px;
+        width: 18px;
+        height: 18px;
         object-fit: contain;
+    }
+
+    .youtube-more-link {
+        display: block;
+        margin-top: 8px;
+        color: #f8fafc !important;
+        text-align: center;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .youtube-more-link:hover {
+        color: #bae6fd !important;
+        text-decoration: underline;
     }
 
     div[data-testid="stTextInput"] [data-baseweb="input"] > div,
@@ -217,23 +235,19 @@ st.markdown(
         transition: transform 180ms ease, box-shadow 180ms ease;
     }
 
-    .toc-card--registration,
-    .st-key-registration-section {
+    .toc-card--registration {
         background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 91%, #2563EB 9%);
     }
 
-    .toc-card--records,
-    .st-key-records-section {
+    .toc-card--records {
         background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 91%, #14B8A6 9%);
     }
 
-    .toc-card--gemini,
-    .st-key-gemini-section {
+    .toc-card--gemini {
         background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 91%, #8B5CF6 9%);
     }
 
-    .toc-card--manual,
-    .st-key-manual-sql-section {
+    .toc-card--manual {
         background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 91%, #F59E0B 9%);
     }
 
@@ -243,15 +257,36 @@ st.markdown(
     .st-key-manual-sql-section,
     .st-key-footer-section,
     .st-key-hero-section,
-    .st-key-about-project-section {
+    .st-key-about-project-section,
+    .st-key-project-video-section {
         padding: 22px;
-        border: 1px solid color-mix(in srgb, var(--text-color, #262730) 12%, transparent);
+        border: 2px solid transparent;
         border-radius: 18px;
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+        background:
+            linear-gradient(var(--section-background, var(--secondary-background-color, #ffffff)),
+                            var(--section-background, var(--secondary-background-color, #ffffff))) padding-box,
+            linear-gradient(120deg, #0F172A 0%, #1E3A8A 55%, #2563EB 100%) border-box;
+    }
+
+    .st-key-registration-section {
+        --section-background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 91%, #2563EB 9%);
+    }
+
+    .st-key-records-section {
+        --section-background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 91%, #14B8A6 9%);
+    }
+
+    .st-key-gemini-section {
+        --section-background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 91%, #8B5CF6 9%);
+    }
+
+    .st-key-manual-sql-section {
+        --section-background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 91%, #F59E0B 9%);
     }
 
     .st-key-hero-section {
-        background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 93%, #2563EB 7%);
+        --section-background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 93%, #2563EB 7%);
         text-align: center;
     }
 
@@ -261,15 +296,12 @@ st.markdown(
     }
 
     .st-key-project-video-section {
+        --section-background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 88%, #93C5FD 12%);
         padding: 20px;
-        background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 88%, #93C5FD 12%);
-        border: 1px solid color-mix(in srgb, #2563EB 22%, transparent);
-        border-radius: 18px;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
     }
 
     .st-key-about-project-section {
-        background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 93%, #14B8A6 7%);
+        --section-background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 93%, #14B8A6 7%);
     }
 
     .st-key-about-project-section [data-testid="stExpander"] {
@@ -279,7 +311,7 @@ st.markdown(
     }
 
     .st-key-footer-section {
-        background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 91%, #1E3A8A 9%);
+        --section-background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 91%, #1E3A8A 9%);
         text-align: center;
     }
 
@@ -435,7 +467,9 @@ social_links_html = '<div class="social-links">' + "".join(
 ) + "</div>"
 
 with st.sidebar:
-    st.image(str(Path(__file__).parent / "images" / "PROFILE.jpeg"), width=180)
+    _, profile_col, _ = st.columns([1, 2, 1])
+    with profile_col:
+        st.image(str(Path(__file__).parent / "images" / "PROFILE.jpeg"), width=140)
     st.subheader("Aman Rajpoot")
     st.write(
         "I'm a data professional with 9+ years of overall professional experience, "
@@ -446,6 +480,24 @@ with st.sidebar:
         "business insights."
     )
     st.markdown(social_links_html, unsafe_allow_html=True)
+    youtube_promo = base64.b64encode(
+        (Path(__file__).parent / "images" / "3D YouTube Creator Promo Thumbnail.png").read_bytes()
+    ).decode("ascii")
+    st.markdown(
+        f"""
+        <a href="https://www.youtube.com/@i.aman.rajpoot"
+           target="_blank" rel="noopener noreferrer"
+           aria-label="Visit Aman Rajpoot's YouTube channel">
+            <img src="data:image/png;base64,{youtube_promo}"
+                 alt="Visit Aman Rajpoot's YouTube channel"
+                style="display:block;width:70%;height:auto;margin:16px auto 0;border-radius:14px;">
+        </a>
+        <a class="youtube-more-link"
+           href="https://www.youtube.com/@i.aman.rajpoot"
+           target="_blank" rel="noopener noreferrer">More on YouTube</a>
+        """,
+        unsafe_allow_html=True,
+    )
 
 with st.container(key="hero-section"):
     st.title("🎓 Student Registration & AI SQL Assistant")
