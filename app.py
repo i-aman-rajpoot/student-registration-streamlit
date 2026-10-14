@@ -7,6 +7,7 @@ import pandas as pd
 import psycopg2
 import streamlit as st
 from google import genai
+from google.genai import errors as genai_errors
 
 
 # ============================================================
@@ -330,6 +331,18 @@ social_profiles = [
         "https://iamanrajpoot.netlify.app/",
         "social-portfolio.svg",
         "image/svg+xml",
+    ),
+    (
+        "Email Aman",
+        "mailto:amanrajpoot101@gmail.com",
+        "social-email.svg",
+        "image/svg+xml",
+    ),
+    (
+        "WhatsApp Aman",
+        "https://wa.me/919873341139?text=Hi%20Aman",
+        "social-whatsapp.png",
+        "image/png",
     ),
     (
         "GitHub profile",
@@ -765,8 +778,20 @@ with st.container(key="gemini-section"):
                 else:
                     st.warning(f"The generated SQL needs review: {message}")
             except Exception as exc:
-                st.error(f"Could not generate SQL: {exc}")
-                st.caption("Check GEMINI_API_KEY, GEMINI_MODEL, and prompts/sql_prompt.txt.")
+                if (
+                    isinstance(exc, genai_errors.APIError)
+                    and exc.code == 503
+                    and exc.status == "UNAVAILABLE"
+                ):
+                    st.warning(
+                        "Gemini is temporarily experiencing high demand. "
+                        "Please refresh the page and try again in a moment."
+                    )
+                else:
+                    st.error(f"Could not generate SQL: {exc}")
+                    st.caption(
+                        "Check GEMINI_API_KEY, GEMINI_MODEL, and prompts/sql_prompt.txt."
+                    )
 
     if st.session_state.get("generated_sql"):
         if st.session_state.get("generated_sql_question"):
