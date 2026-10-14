@@ -5,9 +5,25 @@ from pathlib import Path
 
 import pandas as pd
 import psycopg2
+import sqlparse
 import streamlit as st
 from google import genai
 from google.genai import errors as genai_errors
+
+
+CODE_FENCE_START_RE = re.compile(r"^\s*```(?:sql)?\s*", flags=re.IGNORECASE)
+CODE_FENCE_END_RE = re.compile(r"\s*```\s*$")
+SINGLE_STATEMENT_RE = re.compile(r"^(SELECT|WITH)\b", flags=re.IGNORECASE)
+FORBIDDEN_SQL_RE = re.compile(
+    r"\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|"
+    r"CALL|DO|COPY|VACUUM|REFRESH|EXECUTE|PREPARE|DEALLOCATE|"
+    r"PG_READ_FILE|PG_READ_BINARY_FILE|PG_LS_DIR|LO_IMPORT|LO_EXPORT)\b",
+    flags=re.IGNORECASE,
+)
+LOCKING_CLAUSE_RE = re.compile(
+    r"\bFOR\s+(UPDATE|SHARE|NO\s+KEY\s+UPDATE|KEY\s+SHARE)\b",
+    flags=re.IGNORECASE,
+)
 
 
 # ============================================================
@@ -145,6 +161,45 @@ st.markdown(
         object-fit: contain;
     }
 
+    div[data-testid="stTextInput"] [data-baseweb="input"] > div,
+    div[data-testid="stNumberInput"] [data-baseweb="input"] > div,
+    div[data-testid="stDateInput"] [data-baseweb="input"] > div,
+    div[data-testid="stTimeInput"] [data-baseweb="input"] > div,
+    div[data-testid="stSelectbox"] [data-baseweb="select"] > div,
+    div[data-testid="stMultiSelect"] [data-baseweb="select"] > div,
+    div[data-testid="stTextArea"] textarea,
+    div[data-testid="stFileUploaderDropzone"] {
+        border: 2px solid transparent !important;
+        border-radius: 10px !important;
+        background:
+            linear-gradient(var(--secondary-background-color, #ffffff), var(--secondary-background-color, #ffffff)) padding-box,
+            linear-gradient(120deg, #0F172A 0%, #1E3A8A 55%, #2563EB 100%) border-box !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+        transition: box-shadow 180ms ease, filter 180ms ease;
+    }
+
+    div[data-testid="stTextInput"] [data-baseweb="input"] input,
+    div[data-testid="stNumberInput"] [data-baseweb="input"] input,
+    div[data-testid="stDateInput"] [data-baseweb="input"] input,
+    div[data-testid="stTimeInput"] [data-baseweb="input"] input,
+    div[data-testid="stSelectbox"] [data-baseweb="select"] > div,
+    div[data-testid="stMultiSelect"] [data-baseweb="select"] > div,
+    div[data-testid="stTextArea"] textarea {
+        background-color: transparent !important;
+    }
+
+    div[data-testid="stTextInput"] [data-baseweb="input"]:focus-within > div,
+    div[data-testid="stNumberInput"] [data-baseweb="input"]:focus-within > div,
+    div[data-testid="stDateInput"] [data-baseweb="input"]:focus-within > div,
+    div[data-testid="stTimeInput"] [data-baseweb="input"]:focus-within > div,
+    div[data-testid="stSelectbox"] [data-baseweb="select"]:focus-within > div,
+    div[data-testid="stMultiSelect"] [data-baseweb="select"]:focus-within > div,
+    div[data-testid="stTextArea"] textarea:focus,
+    div[data-testid="stFileUploaderDropzone"]:focus-within {
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25), 0 4px 12px rgba(15, 23, 42, 0.14);
+        filter: brightness(1.04);
+    }
+
     .toc-list {
         display: grid;
         gap: 12px;
@@ -203,6 +258,14 @@ st.markdown(
     .st-key-hero-section [data-testid="stImage"] {
         display: flex;
         justify-content: center;
+    }
+
+    .st-key-project-video-section {
+        padding: 20px;
+        background: color-mix(in srgb, var(--secondary-background-color, #ffffff) 88%, #93C5FD 12%);
+        border: 1px solid color-mix(in srgb, #2563EB 22%, transparent);
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
     }
 
     .st-key-about-project-section {
@@ -352,12 +415,20 @@ social_profiles = [
     ),
 ]
 social_icon_dir = Path(__file__).parent / "images"
+
+
+@st.cache_data(show_spinner=False)
+def load_social_icon_data(icon_name, media_type):
+    icon_bytes = (social_icon_dir / icon_name).read_bytes()
+    encoded_icon = base64.b64encode(icon_bytes).decode("ascii")
+    return f"data:{media_type};base64,{encoded_icon}"
+
+
 social_links_html = '<div class="social-links">' + "".join(
     (
         f'<a href="{url}" aria-label="{label}" title="{label}" '
         'target="_blank" rel="noopener noreferrer">'
-        f'<img src="data:{media_type};base64,'
-        f'{base64.b64encode((social_icon_dir / icon_name).read_bytes()).decode("ascii")}" '
+        f'<img src="{load_social_icon_data(icon_name, media_type)}" '
         'alt=""></a>'
     )
     for label, url, icon_name, media_type in social_profiles
@@ -390,6 +461,14 @@ with st.container(key="hero-section"):
         Supabase/PostgreSQL, inspect the source records, and answer business questions
         using Gemini-generated SQL — or write SQL yourself.
         """
+    )
+
+with st.container(key="project-video-section"):
+    st.markdown("### Project video")
+    st.components.v1.iframe(
+        "https://drive.google.com/file/d/1NByyF_Lab1bCkqVcUCTwbwM5-cuyRTSn/preview",
+        height=480,
+        scrolling=False,
     )
 
 with st.container(key="about-project-section"):
@@ -490,16 +569,16 @@ def get_connection(read_only=False):
 
 
 def load_sql_prompt():
-    prompt_path = Path("prompts/sql_prompt.txt")
+    prompt_path = Path(__file__).parent / "prompts" / "sql_prompt.txt"
     if not prompt_path.exists():
-        raise FileNotFoundError("Could not find prompts/sql_prompt.txt.")
+        raise FileNotFoundError(f"Could not find SQL prompt file: {prompt_path}")
     return prompt_path.read_text(encoding="utf-8")
 
 
 def clean_sql(sql):
     sql = (sql or "").strip()
-    sql = re.sub(r"^\s*```(?:sql)?\s*", "", sql, flags=re.IGNORECASE)
-    sql = re.sub(r"\s*```\s*$", "", sql)
+    sql = CODE_FENCE_START_RE.sub("", sql)
+    sql = CODE_FENCE_END_RE.sub("", sql)
     return sql.strip()
 
 
@@ -511,22 +590,12 @@ def validate_read_only_sql(sql):
     statement = sql[:-1].rstrip() if sql.endswith(";") else sql
     if ";" in statement:
         return False, "Only one SQL statement can be run at a time.", ""
-    if not re.match(r"^(SELECT|WITH)\b", statement, flags=re.IGNORECASE):
+    if not SINGLE_STATEMENT_RE.match(statement):
         return False, "Only read-only SELECT queries (including CTEs) are allowed.", ""
 
-    forbidden = re.compile(
-        r"\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|"
-        r"CALL|DO|COPY|VACUUM|REFRESH|EXECUTE|PREPARE|DEALLOCATE|"
-        r"PG_READ_FILE|PG_READ_BINARY_FILE|PG_LS_DIR|LO_IMPORT|LO_EXPORT)\b",
-        flags=re.IGNORECASE,
-    )
-    if forbidden.search(statement):
+    if FORBIDDEN_SQL_RE.search(statement):
         return False, "The query contains a restricted command or function.", ""
-    if re.search(
-        r"\bFOR\s+(UPDATE|SHARE|NO\s+KEY\s+UPDATE|KEY\s+SHARE)\b",
-        statement,
-        flags=re.IGNORECASE,
-    ):
+    if LOCKING_CLAUSE_RE.search(statement):
         return False, "Locking clauses are not allowed.", ""
     return True, "", statement
 
@@ -587,14 +656,27 @@ def generate_sql(question):
     return clean_sql(response.text)
 
 
-def render_query_runner(sql, key_prefix):
+def render_query_runner(sql, key_prefix, format_preview=False):
     valid, message, _ = validate_read_only_sql(sql)
     if not valid:
         st.error(message)
         return
 
     with st.expander("Review SQL before execution", expanded=True):
-        st.code(sql, language="sql")
+        review_sql = (
+            sqlparse.format(
+                sql,
+                keyword_case="upper",
+                identifier_case="upper",
+                reindent=True,
+                indent_width=4,
+            )
+            if format_preview
+            else sql
+        )
+        st.code(review_sql, language="sql")
+        if format_preview:
+            st.caption("Preview is formatted for readability; the original query text is executed.")
 
     if st.button("▶ Run query", key=f"{key_prefix}_run", type="primary"):
         try:
@@ -623,7 +705,6 @@ def render_query_runner(sql, key_prefix):
 # ============================================================
 # SECTION 1 — STUDENT REGISTRATION
 # ============================================================
-st.divider()
 with st.container(key="registration-section"):
     st.header("1. 📝 Student Registration", anchor="student-registration")
     st.caption("Enter student details and save them to the database.")
@@ -688,7 +769,6 @@ with st.container(key="registration-section"):
 # ============================================================
 # SECTION 2 — SOURCE RECORDS
 # ============================================================
-st.divider()
 with st.container(key="records-section"):
     st.header("2. 📋 Student Source Records", anchor="student-source-records")
     st.caption(
@@ -697,11 +777,19 @@ with st.container(key="records-section"):
 
     if st.button("↻ Refresh source records", key="refresh_students"):
         st.session_state.pop("student_records_cache", None)
+        st.session_state.pop("student_search_index", None)
 
     try:
         if "student_records_cache" not in st.session_state:
-            st.session_state["student_records_cache"] = fetch_students()
-        source_df = st.session_state["student_records_cache"].copy()
+            source_df = fetch_students()
+            st.session_state["student_records_cache"] = source_df
+        source_df = st.session_state["student_records_cache"]
+        if "student_search_index" not in st.session_state:
+            st.session_state["student_search_index"] = (
+                source_df.fillna("").astype(str).apply(
+                    lambda column: column.str.casefold()
+                )
+            )
 
         search_term = st.text_input(
             "Search source records",
@@ -710,8 +798,11 @@ with st.container(key="records-section"):
         )
         filtered_df = source_df
         if search_term.strip():
-            mask = source_df.astype(str).apply(
-                lambda column: column.str.contains(search_term.strip(), case=False, na=False)
+            search_index = st.session_state["student_search_index"]
+            mask = search_index.apply(
+                lambda column: column.str.contains(
+                    search_term.strip().casefold(), regex=False, na=False
+                )
             ).any(axis=1)
             filtered_df = source_df.loc[mask]
 
@@ -739,7 +830,6 @@ with st.container(key="records-section"):
 # ============================================================
 # SECTION 3 — GEMINI AI ASSISTANT
 # ============================================================
-st.divider()
 with st.container(key="gemini-section"):
     st.header("3. 🤖 Gemini AI: Business Question to SQL", anchor="gemini-ai-assistant")
     st.caption(
@@ -808,7 +898,6 @@ with st.container(key="gemini-section"):
 # ============================================================
 # SECTION 4 — MANUAL SQL EDITOR
 # ============================================================
-st.divider()
 with st.container(key="manual-sql-section"):
     st.header("4. ⌨️ Write SQL Yourself", anchor="write-sql-yourself")
     st.caption(
@@ -844,13 +933,12 @@ with st.container(key="manual-sql-section"):
         key="manual_sql_editor",
         help="Use one SELECT query. Results are capped at 1,000 rows.",
     )
-    render_query_runner(manual_sql, "manual_query")
+    render_query_runner(manual_sql, "manual_query", format_preview=True)
 
 
 # ============================================================
 # FOOTER
 # ============================================================
-st.divider()
 with st.container(key="footer-section"):
     st.markdown("**Developed by Aman Rajpoot**")
     st.caption(
